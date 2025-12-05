@@ -1,8 +1,9 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { v4 as uuidv4 } from 'uuid';
-import { Message, Role } from './types';
+import { Message, Role, DataType } from './types';
 import RobotAvatar from './components/RobotAvatar';
 import ChatMessage from './components/ChatMessage';
+import DataInputModal from './components/DataInputModal';
 import { sendMessageToGemini, generateSpeech } from './services/geminiService';
 import { AudioPlayer } from './services/audioUtils';
 
@@ -11,13 +12,14 @@ const App: React.FC = () => {
     {
       id: 'init-1',
       role: Role.MODEL,
-      text: "Greetings. I am Unit-734. I am ready to analyze your symptoms. Please describe your condition or upload a visual scan.",
+      text: "Greetings. I am Unit-734. I am ready to analyze your symptoms. Please describe your condition, upload a visual scan, or import medical test data.",
       timestamp: new Date(),
     }
   ]);
   const [inputText, setInputText] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [audioPlayingId, setAudioPlayingId] = useState<string | null>(null);
+  const [activeModal, setActiveModal] = useState<DataType | null>(null);
   
   // Ref for auto-scrolling
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -37,25 +39,10 @@ const App: React.FC = () => {
     scrollToBottom();
   }, [messages]);
 
-  const handleSendMessage = async () => {
-    if ((!inputText.trim() && !selectedImage) || isLoading) return;
-
-    const userMsgId = uuidv4();
-    const newUserMessage: Message = {
-      id: userMsgId,
-      role: Role.USER,
-      text: inputText,
-      timestamp: new Date(),
-      attachment: selectedImage || undefined
-    };
-
-    setMessages(prev => [...prev, newUserMessage]);
-    setInputText('');
-    setSelectedImage(null);
+  const processMessage = async (userText: string, image?: string) => {
     setIsLoading(true);
-
     try {
-      const responseText = await sendMessageToGemini(messages, newUserMessage.text, newUserMessage.attachment);
+      const responseText = await sendMessageToGemini(messages, userText, image);
       
       const botMsgId = uuidv4();
       const newBotMessage: Message = {
@@ -80,10 +67,62 @@ const App: React.FC = () => {
     }
   };
 
-  const handlePlayAudio = async (id: string, text: string) => {
-    // If already playing this ID, stop it (toggle) - simplified to just stop for now if clicked again?
-    // Let's assume clicking play on another stops current.
+  const handleSendMessage = async () => {
+    if ((!inputText.trim() && !selectedImage) || isLoading) return;
+
+    const userMsgId = uuidv4();
+    const newUserMessage: Message = {
+      id: userMsgId,
+      role: Role.USER,
+      text: inputText,
+      timestamp: new Date(),
+      attachment: selectedImage || undefined
+    };
+
+    setMessages(prev => [...prev, newUserMessage]);
+    const textToSend = inputText;
+    const imageToSend = selectedImage || undefined;
     
+    setInputText('');
+    setSelectedImage(null);
+
+    await processMessage(textToSend, imageToSend);
+  };
+
+  const handleDataSubmit = async (type: DataType, value: string) => {
+    setActiveModal(null);
+    const text = `**IMPORTED ${type.toUpperCase()} DATA:**\n${value}`;
+    
+    const userMsgId = uuidv4();
+    const newUserMessage: Message = {
+      id: userMsgId,
+      role: Role.USER,
+      text: text,
+      timestamp: new Date(),
+    };
+    
+    setMessages(prev => [...prev, newUserMessage]);
+    await processMessage(text);
+  };
+
+  const handleGenerateReport = async () => {
+    const text = "SYSTEM COMMAND: Please generate a formal 'Medical Report & Prescription' based on all provided data and our consultation. Format it as a professional medical document.";
+    
+    // We don't necessarily show the system command as a user message, but for clarity in this chat app, we can.
+    // Or we can just trigger the loading state and process it. Let's show it as a command.
+    const userMsgId = uuidv4();
+    const newUserMessage: Message = {
+      id: userMsgId,
+      role: Role.USER,
+      text: "🖨️ *Requesting Medical Report Generation...*",
+      timestamp: new Date(),
+    };
+
+    setMessages(prev => [...prev, newUserMessage]);
+    await processMessage(text);
+  };
+
+  const handlePlayAudio = async (id: string, text: string) => {
     if (audioPlayingId) {
         audioPlayerRef.current.stop();
         if (audioPlayingId === id) {
@@ -109,13 +148,7 @@ const App: React.FC = () => {
     if (file) {
       const reader = new FileReader();
       reader.onloadend = () => {
-        // Remove data URL prefix for API
         const base64String = reader.result as string;
-        // Store full string for preview, strip for API later if needed (handled in service usually, but simpler to strip here)
-        // Actually, for display we need prefix. For API we need raw.
-        // Let's keep full string here and strip in service if needed.
-        // Wait, logic check: FileReader gives `data:image/jpeg;base64,....`
-        // Service expects base64 data only.
         const rawBase64 = base64String.split(',')[1];
         setSelectedImage(rawBase64);
       };
@@ -125,31 +158,44 @@ const App: React.FC = () => {
 
   return (
     <div className="flex flex-col md:flex-row h-screen bg-med-dark overflow-hidden font-sans">
-      
+      <DataInputModal 
+        type={activeModal} 
+        onClose={() => setActiveModal(null)} 
+        onSubmit={handleDataSubmit}
+      />
+
       {/* Left Panel: Robot Avatar */}
-      <div className="w-full md:w-5/12 lg:w-1/3 h-[40vh] md:h-full border-b md:border-b-0 md:border-r border-slate-800 bg-slate-900 relative">
+      <div className="w-full md:w-5/12 lg:w-1/3 h-[35vh] md:h-full border-b md:border-b-0 md:border-r border-slate-800 bg-slate-900 relative">
         <RobotAvatar isProcessing={isLoading} isSpeaking={!!audioPlayingId} />
         
         {/* Disclaimer Overlay at bottom of avatar panel */}
-        <div className="absolute bottom-4 left-0 w-full px-6 text-center">
-             <p className="text-[10px] text-slate-500 font-mono">
-                CAUTION: AI GENERATED ADVICE. NOT A SUBSTITUTE FOR PROFESSIONAL MEDICAL CARE.
-                IN EMERGENCIES CALL 911 (OR LOCAL EMERGENCY).
+        <div className="absolute bottom-4 left-0 w-full px-6 text-center z-20">
+             <p className="text-[10px] text-slate-500 font-mono leading-tight">
+                All data entered and imported will be saved to google cloud and used for training google model nothing else.
              </p>
         </div>
       </div>
 
       {/* Right Panel: Chat Interface */}
-      <div className="w-full md:w-7/12 lg:w-2/3 h-[60vh] md:h-full flex flex-col bg-slate-950 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-slate-900 via-med-dark to-black">
+      <div className="w-full md:w-7/12 lg:w-2/3 h-[65vh] md:h-full flex flex-col bg-slate-950 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-slate-900 via-med-dark to-black">
         
         {/* Header */}
-        <div className="h-16 border-b border-white/5 flex items-center justify-between px-6 backdrop-blur-sm">
+        <div className="h-16 border-b border-white/5 flex items-center justify-between px-6 backdrop-blur-sm shrink-0">
             <div className="flex items-center gap-2">
                 <div className="w-2 h-2 rounded-full bg-med-blue shadow-[0_0_10px_#0ea5e9]"></div>
-                <h1 className="text-med-blue font-display tracking-wider text-lg">MEDICAL DIAGNOSTIC INTERFACE</h1>
+                <h1 className="text-med-blue font-display tracking-wider text-lg hidden sm:block">MEDICAL DIAGNOSTIC INTERFACE</h1>
+                <h1 className="text-med-blue font-display tracking-wider text-lg sm:hidden">M.D.I.</h1>
             </div>
-            <div className="text-slate-500 text-xs font-mono">
-                SECURE CONNECTION ESTABLISHED
+            
+            <div className="flex items-center gap-3">
+                 <button 
+                    onClick={handleGenerateReport}
+                    disabled={isLoading}
+                    className="flex items-center gap-2 px-3 py-1.5 rounded bg-med-blue/10 border border-med-blue/30 text-med-blue text-xs font-mono hover:bg-med-blue/20 transition-all"
+                 >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
+                    PRINT REPORT
+                 </button>
             </div>
         </div>
 
@@ -174,10 +220,31 @@ const App: React.FC = () => {
         </div>
 
         {/* Input Area */}
-        <div className="p-4 border-t border-white/5 bg-slate-900/50 backdrop-blur-md">
+        <div className="p-4 border-t border-white/5 bg-slate-900/50 backdrop-blur-md shrink-0">
+            
+            {/* Medical Tools Toolbar */}
+            <div className="flex gap-2 mb-3 overflow-x-auto pb-2 scrollbar-hide">
+                <button onClick={() => fileInputRef.current?.click()} className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-800 border border-slate-700 text-slate-300 text-xs font-mono hover:border-med-blue hover:text-white transition-all whitespace-nowrap">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+                    Picture
+                </button>
+                <button onClick={() => setActiveModal(DataType.BLOOD)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-800 border border-slate-700 text-slate-300 text-xs font-mono hover:border-red-500 hover:text-white transition-all whitespace-nowrap">
+                    🩸 Blood Test
+                </button>
+                <button onClick={() => setActiveModal(DataType.URINE)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-800 border border-slate-700 text-slate-300 text-xs font-mono hover:border-yellow-500 hover:text-white transition-all whitespace-nowrap">
+                    💧 Urine Test
+                </button>
+                <button onClick={() => setActiveModal(DataType.PULSE)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-800 border border-slate-700 text-slate-300 text-xs font-mono hover:border-pink-500 hover:text-white transition-all whitespace-nowrap">
+                    ❤️ Pulse
+                </button>
+                <button onClick={() => setActiveModal(DataType.STOOL)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-800 border border-slate-700 text-slate-300 text-xs font-mono hover:border-amber-700 hover:text-white transition-all whitespace-nowrap">
+                    💩 Stool Test
+                </button>
+            </div>
+
             {/* Image Preview */}
             {selectedImage && (
-                <div className="mb-2 relative inline-block">
+                <div className="mb-2 relative inline-block animate-in fade-in slide-in-from-bottom-2">
                     <img src={`data:image/jpeg;base64,${selectedImage}`} alt="Preview" className="h-20 rounded border border-med-blue/50" />
                     <button 
                         onClick={() => setSelectedImage(null)}
@@ -189,13 +256,6 @@ const App: React.FC = () => {
             )}
 
             <div className="flex gap-2 items-end">
-                <button 
-                    onClick={() => fileInputRef.current?.click()}
-                    className="p-3 text-med-blue border border-med-blue/30 rounded-lg hover:bg-med-blue/10 transition-colors h-[50px] w-[50px] flex items-center justify-center"
-                    title="Upload Scan"
-                >
-                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
-                </button>
                 <input 
                     type="file" 
                     ref={fileInputRef} 
@@ -213,8 +273,8 @@ const App: React.FC = () => {
                             handleSendMessage();
                         }
                     }}
-                    placeholder="Describe symptoms..."
-                    className="flex-1 bg-slate-800/50 text-white border border-slate-700 rounded-lg p-3 h-[50px] max-h-[120px] focus:outline-none focus:border-med-blue focus:ring-1 focus:ring-med-blue resize-none font-mono text-sm"
+                    placeholder="Describe symptoms or ask questions..."
+                    className="flex-1 bg-slate-800/50 text-white border border-slate-700 rounded-lg p-3 h-[50px] max-h-[120px] focus:outline-none focus:border-med-blue focus:ring-1 focus:ring-med-blue resize-none font-mono text-sm placeholder:text-slate-600"
                 />
 
                 <button 

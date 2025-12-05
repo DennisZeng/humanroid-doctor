@@ -14,6 +14,10 @@ Behavioral Guidelines:
 3. Safety: You MUST state that you are an AI and not a replacement for a human doctor in critical situations. If a symptom sounds life-threatening (chest pain, stroke signs, severe bleeding), advise calling emergency services immediately.
 4. Visuals: If an image is provided, analyze the visual symptoms (e.g., rash color, swelling) carefully.
 5. Format: Use Markdown for lists and emphasis.
+
+Special Functions:
+- Medical Data Analysis: You may receive structured data inputs (Blood Test, Urine Test, Pulse, Stool Test). Analyze these values against standard medical ranges.
+- Medical Report: If asked to "print medical report" or "generate report", output a formal document structure using Markdown headers (# Medical Report). Include sections for: Patient Symptoms, Clinical Observations (Visual/Data), Diagnosis/Differential Diagnosis, and Suggested Prescription/Treatment Plan.
 `;
 
 export const sendMessageToGemini = async (
@@ -22,7 +26,7 @@ export const sendMessageToGemini = async (
   imageData?: string // base64
 ): Promise<string> => {
   try {
-    const modelId = "gemini-2.5-flash"; // Fast and capable for chat
+    const modelId = "gemini-3-pro-preview"; // Updated to the requested model
 
     // Construct the parts
     const parts: any[] = [];
@@ -38,11 +42,7 @@ export const sendMessageToGemini = async (
     
     parts.push({ text: newMessage });
 
-    // Format history for context (simplified for this demo to just last few turns if needed, 
-    // but here we just send the fresh prompt with system instruction context is usually handled by Chat session,
-    // but for stateless requests we can just rely on the immediate prompt or reconstruct chat history if using chats.create)
-    // For simplicity in this functional component, we will use a Chat session.
-    
+    // Format history for context
     const chatHistory = history.map(h => ({
       role: h.role,
       parts: [{ text: h.text }]

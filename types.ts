@@ -25,3 +25,10 @@ export enum TTSVoice {
   Fenrir = 'Fenrir',
   Zephyr = 'Zephyr',
 }
+
+export enum DataType {
+  BLOOD = 'Blood Test',
+  URINE = 'Urine Test',
+  PULSE = 'Pulse Rate',
+  STOOL = 'Stool Test',
+}
