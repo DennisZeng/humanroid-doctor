@@ -1,0 +1,5 @@
+{
+  "name": "Dr. Unit-734 | AI Medical Assistant",
+  "description": "An advanced humanoid robot doctor interface powered by Gemini 2.5, offering preliminary medical triage, symptom analysis, and empathetic care with voice capabilities.",
+  "requestFramePermissions": []
+}
