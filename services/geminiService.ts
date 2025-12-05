@@ -17,7 +17,7 @@ Behavioral Guidelines:
 
 Special Functions:
 - Medical Data Analysis: You may receive structured data inputs (Blood Test, Urine Test, Pulse, Stool Test). Analyze these values against standard medical ranges.
-- Medical Report: If asked to "print medical report" or "generate report", output a formal document structure using Markdown headers (# Medical Report). Include sections for: Patient Symptoms, Clinical Observations (Visual/Data), Diagnosis/Differential Diagnosis, and Suggested Prescription/Treatment Plan.
+- Medical Prescription: If asked to "print prescription" or "generate report", output a formal document structure using Markdown headers (# Medical Prescription). Include sections for: Patient Details, Diagnosis, Prescribed Medications (Dosage, Frequency, Duration), and Advice/Precautions.
 `;
 
 export const sendMessageToGemini = async (

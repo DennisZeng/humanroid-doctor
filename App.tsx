@@ -20,6 +20,7 @@ const App: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [audioPlayingId, setAudioPlayingId] = useState<string | null>(null);
   const [activeModal, setActiveModal] = useState<DataType | null>(null);
+  const [isListening, setIsListening] = useState(false);
   
   // Ref for auto-scrolling
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -30,6 +31,9 @@ const App: React.FC = () => {
 
   // Audio Player instance
   const audioPlayerRef = useRef<AudioPlayer>(new AudioPlayer());
+
+  // Speech Recognition Ref
+  const recognitionRef = useRef<any>(null);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -105,16 +109,14 @@ const App: React.FC = () => {
     await processMessage(text);
   };
 
-  const handleGenerateReport = async () => {
-    const text = "SYSTEM COMMAND: Please generate a formal 'Medical Report & Prescription' based on all provided data and our consultation. Format it as a professional medical document.";
+  const handleGeneratePrescription = async () => {
+    const text = "SYSTEM COMMAND: Please generate a formal 'Medical Prescription' based on all provided data and our consultation. Format it as a professional medical document with diagnosis and medication details.";
     
-    // We don't necessarily show the system command as a user message, but for clarity in this chat app, we can.
-    // Or we can just trigger the loading state and process it. Let's show it as a command.
     const userMsgId = uuidv4();
     const newUserMessage: Message = {
       id: userMsgId,
       role: Role.USER,
-      text: "🖨️ *Requesting Medical Report Generation...*",
+      text: "🖨️ *Requesting Medical Prescription...*",
       timestamp: new Date(),
     };
 
@@ -140,6 +142,51 @@ const App: React.FC = () => {
       });
     } else {
       setAudioPlayingId(null);
+    }
+  };
+
+  const toggleListening = () => {
+    if (isListening) {
+      if (recognitionRef.current) {
+        recognitionRef.current.stop();
+      }
+      setIsListening(false);
+      return;
+    }
+
+    if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+      const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+      const recognition = new SpeechRecognition();
+      recognitionRef.current = recognition;
+      
+      recognition.continuous = false;
+      recognition.interimResults = false;
+      recognition.lang = 'en-US';
+
+      recognition.onstart = () => {
+        setIsListening(true);
+      };
+
+      recognition.onresult = (event: any) => {
+        const transcript = event.results[0][0].transcript;
+        setInputText((prev) => {
+             const needsSpace = prev.length > 0 && !prev.endsWith(' ');
+             return prev + (needsSpace ? ' ' : '') + transcript;
+        });
+      };
+
+      recognition.onerror = (event: any) => {
+        console.error("Speech recognition error", event.error);
+        setIsListening(false);
+      };
+
+      recognition.onend = () => {
+        setIsListening(false);
+      };
+
+      recognition.start();
+    } else {
+      alert("Speech recognition is not supported in this browser. Please use Chrome or Edge.");
     }
   };
 
@@ -189,12 +236,12 @@ const App: React.FC = () => {
             
             <div className="flex items-center gap-3">
                  <button 
-                    onClick={handleGenerateReport}
+                    onClick={handleGeneratePrescription}
                     disabled={isLoading}
                     className="flex items-center gap-2 px-3 py-1.5 rounded bg-med-blue/10 border border-med-blue/30 text-med-blue text-xs font-mono hover:bg-med-blue/20 transition-all"
                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
-                    PRINT REPORT
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+                    PRINT PRESCRIPTION
                  </button>
             </div>
         </div>
@@ -276,6 +323,23 @@ const App: React.FC = () => {
                     placeholder="Describe symptoms or ask questions..."
                     className="flex-1 bg-slate-800/50 text-white border border-slate-700 rounded-lg p-3 h-[50px] max-h-[120px] focus:outline-none focus:border-med-blue focus:ring-1 focus:ring-med-blue resize-none font-mono text-sm placeholder:text-slate-600"
                 />
+
+                <button 
+                    onClick={toggleListening}
+                    title="Toggle Microphone"
+                    className={`p-3 rounded-lg h-[50px] w-[50px] flex items-center justify-center transition-all border border-slate-700 shadow-[0_0_10px_rgba(0,0,0,0.3)]
+                        ${isListening 
+                            ? 'bg-red-500/20 text-red-500 border-red-500 animate-pulse' 
+                            : 'bg-slate-800 text-slate-400 hover:text-white hover:bg-slate-700'
+                        }
+                    `}
+                >
+                    {isListening ? (
+                         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="1" y1="1" x2="23" y2="23"></line><path d="M9 9v3a3 3 0 0 0 5.12 2.12M15 9.34V4a3 3 0 0 0-5.94-.6"></path><path d="M17 16.95A7 7 0 0 1 5 12v-2m14 0v2a7 7 0 0 1-.11 1.23"></path><line x1="12" y1="19" x2="12" y2="23"></line><line x1="8" y1="23" x2="16" y2="23"></line></svg>
+                    ) : (
+                         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="23"></line><line x1="8" y1="23" x2="16" y2="23"></line></svg>
+                    )}
+                </button>
 
                 <button 
                     onClick={handleSendMessage}
