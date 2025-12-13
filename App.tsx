@@ -57,7 +57,6 @@ const TRANSLATIONS = {
 
 const App: React.FC = () => {
   const [language, setLanguage] = useState<Language>('en');
-  const [isHome, setIsHome] = useState(true);
   const t = TRANSLATIONS[language];
 
   const [messages, setMessages] = useState<Message[]>([
@@ -92,10 +91,8 @@ const App: React.FC = () => {
   };
 
   useEffect(() => {
-    if (!isHome) {
-      scrollToBottom();
-    }
-  }, [messages, isHome]);
+    scrollToBottom();
+  }, [messages]);
 
   // Update initial message when language changes if it's the only message
   useEffect(() => {
@@ -280,59 +277,6 @@ const App: React.FC = () => {
   };
 
   // --------------------------------------------------------------------------
-  // HOME PAGE RENDER
-  // --------------------------------------------------------------------------
-  if (isHome) {
-    return (
-      <div className="h-screen w-full bg-med-dark text-white flex flex-col items-center justify-center relative overflow-hidden font-sans">
-         {/* Background */}
-         <div className="absolute inset-0 bg-gradient-to-b from-slate-900 to-black z-0"></div>
-         <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-10 z-0"></div>
-         
-         <div className="z-10 flex flex-col items-center text-center p-6 space-y-8 animate-in fade-in zoom-in duration-500">
-             {/* Image */}
-             <div 
-                className="w-48 h-48 md:w-64 md:h-64 rounded-full border-4 border-med-blue shadow-[0_0_50px_rgba(14,165,233,0.4)] overflow-hidden relative group cursor-pointer" 
-                onClick={() => setIsHome(false)}
-             >
-                 <img 
-                     src="https://images.unsplash.com/photo-1485827404703-89b55fcc595e?auto=format&fit=crop&w=800&q=80" 
-                     alt="Dr. Constance Petersen" 
-                     className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
-                 />
-                 <div className="absolute inset-0 bg-med-blue/10 group-hover:bg-med-blue/0 transition-colors"></div>
-             </div>
-  
-             <div className="space-y-4 max-w-lg">
-                 <h1 className="text-4xl md:text-5xl font-display tracking-widest text-white">Dr. Constance Petersen</h1>
-                 <p className="text-xl md:text-2xl text-med-blue font-light">
-                     {t.whatCanIDo}
-                 </p>
-             </div>
-  
-             <button 
-                 onClick={() => setIsHome(false)}
-                 className="group relative px-8 py-3 bg-transparent border border-med-blue text-med-blue font-display tracking-wider hover:bg-med-blue hover:text-white transition-all duration-300 rounded overflow-hidden"
-             >
-                 <span className="relative z-10">{t.start}</span>
-                 <div className="absolute inset-0 bg-med-blue/20 transform scale-x-0 group-hover:scale-x-100 transition-transform origin-left duration-300"></div>
-             </button>
-  
-             {/* Language Switcher for Home */}
-             <div className="flex gap-4 mt-8">
-                  <button onClick={() => setLanguage('en')} className={`text-sm font-mono px-3 py-1 rounded transition-colors ${language === 'en' ? 'bg-med-blue text-white' : 'text-slate-500 hover:text-slate-300'}`}>EN</button>
-                  <button onClick={() => setLanguage('zh')} className={`text-sm font-mono px-3 py-1 rounded transition-colors ${language === 'zh' ? 'bg-med-blue text-white' : 'text-slate-500 hover:text-slate-300'}`}>中文</button>
-             </div>
-         </div>
-  
-         <div className="absolute bottom-6 text-slate-600 text-[10px] font-mono px-6 text-center">
-             {t.disclaimer}
-         </div>
-      </div>
-    );
-  }
-
-  // --------------------------------------------------------------------------
   // CHAT INTERFACE RENDER
   // --------------------------------------------------------------------------
   return (
@@ -348,15 +292,6 @@ const App: React.FC = () => {
       <div className="w-full md:w-5/12 lg:w-1/3 h-[35vh] md:h-full border-b md:border-b-0 md:border-r border-slate-800 bg-slate-900 relative">
         <RobotAvatar isProcessing={isLoading} isSpeaking={!!audioPlayingId} />
         
-        {/* Back to Home Button (top left absolute) */}
-        <button 
-            onClick={() => setIsHome(true)}
-            className="absolute top-4 left-4 z-30 text-slate-500 hover:text-med-blue transition-colors"
-            title="Back to Home"
-        >
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
-        </button>
-
         {/* Disclaimer Overlay at bottom of avatar panel */}
         <div className="absolute bottom-4 left-0 w-full px-6 text-center z-20">
              <p className="text-[10px] text-slate-500 font-mono leading-tight">
