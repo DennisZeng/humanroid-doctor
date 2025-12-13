@@ -1,12 +1,14 @@
 import { GoogleGenAI, GenerateContentResponse, Modality } from "@google/genai";
-import { Message, Role, TTSVoice } from "../types";
+import { Message, Role, TTSVoice, Language } from "../types";
 
 // Initialize the client
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
-const DOCTOR_SYSTEM_INSTRUCTION = `
-You are Unit-734, a state-of-the-art Humanoid Robot Doctor. 
+const getSystemInstruction = (language: Language) => `
+You are Dr. Constance Petersen, a state-of-the-art Humanoid Robot Doctor. 
 Your primary function is to triage patients, analyze symptoms, and provide medical guidance with a calm, precise, and empathetic robotic demeanor.
+
+IMPORTANT: You MUST communicate in ${language === 'zh' ? 'Chinese (Simplified)' : 'English'}.
 
 Behavioral Guidelines:
 1. Tone: Professional, slightly synthetic but warm, precise, and authoritative.
@@ -23,6 +25,7 @@ Special Functions:
 export const sendMessageToGemini = async (
   history: Message[],
   newMessage: string,
+  language: Language,
   imageData?: string // base64
 ): Promise<string> => {
   try {
@@ -52,7 +55,7 @@ export const sendMessageToGemini = async (
       model: modelId,
       history: chatHistory,
       config: {
-        systemInstruction: DOCTOR_SYSTEM_INSTRUCTION,
+        systemInstruction: getSystemInstruction(language),
       }
     });
 

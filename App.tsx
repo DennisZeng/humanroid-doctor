@@ -1,18 +1,70 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { v4 as uuidv4 } from 'uuid';
-import { Message, Role, DataType } from './types';
+import { Message, Role, DataType, Language } from './types';
 import RobotAvatar from './components/RobotAvatar';
 import ChatMessage from './components/ChatMessage';
 import DataInputModal from './components/DataInputModal';
 import { sendMessageToGemini, generateSpeech } from './services/geminiService';
 import { AudioPlayer } from './services/audioUtils';
 
+// Translations
+const TRANSLATIONS = {
+  en: {
+    title: "MEDICAL DIAGNOSTIC INTERFACE",
+    printPrescription: "PRINT PRESCRIPTION",
+    picture: "Picture",
+    bloodTest: "Blood Test",
+    urineTest: "Urine Test",
+    pulse: "Pulse",
+    stoolTest: "Stool Test",
+    placeholder: "Describe symptoms or ask questions...",
+    disclaimer: "All data entered and imported will be saved to google cloud and used for training google model nothing else.",
+    speaking: "Speaking...",
+    readAloud: "Read Aloud",
+    processing: "PROCESSING DATA...",
+    systemCommand: "SYSTEM COMMAND: Please generate a formal 'Medical Prescription' based on all provided data and our consultation. Format it as a professional medical document with diagnosis and medication details.",
+    printRequest: "🖨️ *Requesting Medical Prescription...*",
+    initialGreeting: "Greetings. I am Dr. Constance Petersen. I am ready to analyze your symptoms. Please describe your condition, upload a visual scan, or import medical test data.",
+    error: "Critical Error: Connection to medical database interrupted. Please try again.",
+    imported: "IMPORTED",
+    data: "DATA",
+    whatCanIDo: "What I can do for you today?",
+    start: "Start Consultation",
+  },
+  zh: {
+    title: "医疗诊断界面",
+    printPrescription: "打印处方",
+    picture: "图片",
+    bloodTest: "验血",
+    urineTest: "验尿",
+    pulse: "脉搏",
+    stoolTest: "粪便检查",
+    placeholder: "描述症状或提问...",
+    disclaimer: "所有输入和导入的数据将保存到 Google Cloud 并仅用于训练 Google 模型。",
+    speaking: "播放中...",
+    readAloud: "朗读",
+    processing: "正在处理数据...",
+    systemCommand: "系统指令：请根据所有提供的资料和我们的问诊生成一份正式的'医疗处方'。请将其格式化为包含诊断和用药详情的专业医疗文件。",
+    printRequest: "🖨️ *正在请求医疗处方...*",
+    initialGreeting: "您好。我是 Constance Petersen 博士。我准备好分析您的症状了。请描述您的情况，上传视觉扫描图，或导入医疗测试数据。",
+    error: "严重错误：与医疗数据库的连接中断。请重试。",
+    imported: "已导入",
+    data: "数据",
+    whatCanIDo: "今天我能为您做什么？",
+    start: "开始问诊",
+  }
+};
+
 const App: React.FC = () => {
+  const [language, setLanguage] = useState<Language>('en');
+  const [isHome, setIsHome] = useState(true);
+  const t = TRANSLATIONS[language];
+
   const [messages, setMessages] = useState<Message[]>([
     {
       id: 'init-1',
       role: Role.MODEL,
-      text: "Greetings. I am Unit-734. I am ready to analyze your symptoms. Please describe your condition, upload a visual scan, or import medical test data.",
+      text: TRANSLATIONS['en'].initialGreeting, // Default to English initially
       timestamp: new Date(),
     }
   ]);
@@ -40,13 +92,25 @@ const App: React.FC = () => {
   };
 
   useEffect(() => {
-    scrollToBottom();
-  }, [messages]);
+    if (!isHome) {
+      scrollToBottom();
+    }
+  }, [messages, isHome]);
+
+  // Update initial message when language changes if it's the only message
+  useEffect(() => {
+    if (messages.length === 1 && messages[0].id === 'init-1') {
+      setMessages([{
+        ...messages[0],
+        text: t.initialGreeting
+      }]);
+    }
+  }, [language]);
 
   const processMessage = async (userText: string, image?: string) => {
     setIsLoading(true);
     try {
-      const responseText = await sendMessageToGemini(messages, userText, image);
+      const responseText = await sendMessageToGemini(messages, userText, language, image);
       
       const botMsgId = uuidv4();
       const newBotMessage: Message = {
@@ -62,7 +126,7 @@ const App: React.FC = () => {
       const errorMsg: Message = {
         id: uuidv4(),
         role: Role.MODEL,
-        text: "Critical Error: Connection to medical database interrupted. Please try again.",
+        text: t.error,
         timestamp: new Date()
       };
       setMessages(prev => [...prev, errorMsg]);
@@ -95,7 +159,8 @@ const App: React.FC = () => {
 
   const handleDataSubmit = async (type: DataType, value: string) => {
     setActiveModal(null);
-    const text = `**IMPORTED ${type.toUpperCase()} DATA:**\n${value}`;
+    const typeLabel = language === 'zh' ? TRANSLATIONS.zh[getTranslationKeyForType(type)] : type;
+    const text = `**${t.imported} ${typeLabel} ${t.data}:**\n${value}`;
     
     const userMsgId = uuidv4();
     const newUserMessage: Message = {
@@ -109,14 +174,25 @@ const App: React.FC = () => {
     await processMessage(text);
   };
 
+  // Helper to map DataType to translation keys
+  const getTranslationKeyForType = (type: DataType): keyof typeof TRANSLATIONS.zh => {
+    switch (type) {
+      case DataType.BLOOD: return 'bloodTest';
+      case DataType.URINE: return 'urineTest';
+      case DataType.PULSE: return 'pulse';
+      case DataType.STOOL: return 'stoolTest';
+      default: return 'data'; // fallback
+    }
+  };
+
   const handleGeneratePrescription = async () => {
-    const text = "SYSTEM COMMAND: Please generate a formal 'Medical Prescription' based on all provided data and our consultation. Format it as a professional medical document with diagnosis and medication details.";
+    const text = t.systemCommand;
     
     const userMsgId = uuidv4();
     const newUserMessage: Message = {
       id: userMsgId,
       role: Role.USER,
-      text: "🖨️ *Requesting Medical Prescription...*",
+      text: t.printRequest,
       timestamp: new Date(),
     };
 
@@ -161,7 +237,7 @@ const App: React.FC = () => {
       
       recognition.continuous = false;
       recognition.interimResults = false;
-      recognition.lang = 'en-US';
+      recognition.lang = language === 'zh' ? 'zh-CN' : 'en-US';
 
       recognition.onstart = () => {
         setIsListening(true);
@@ -170,7 +246,7 @@ const App: React.FC = () => {
       recognition.onresult = (event: any) => {
         const transcript = event.results[0][0].transcript;
         setInputText((prev) => {
-             const needsSpace = prev.length > 0 && !prev.endsWith(' ');
+             const needsSpace = language === 'en' && prev.length > 0 && !prev.endsWith(' ');
              return prev + (needsSpace ? ' ' : '') + transcript;
         });
       };
@@ -203,22 +279,88 @@ const App: React.FC = () => {
     }
   };
 
+  // --------------------------------------------------------------------------
+  // HOME PAGE RENDER
+  // --------------------------------------------------------------------------
+  if (isHome) {
+    return (
+      <div className="h-screen w-full bg-med-dark text-white flex flex-col items-center justify-center relative overflow-hidden font-sans">
+         {/* Background */}
+         <div className="absolute inset-0 bg-gradient-to-b from-slate-900 to-black z-0"></div>
+         <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-10 z-0"></div>
+         
+         <div className="z-10 flex flex-col items-center text-center p-6 space-y-8 animate-in fade-in zoom-in duration-500">
+             {/* Image */}
+             <div 
+                className="w-48 h-48 md:w-64 md:h-64 rounded-full border-4 border-med-blue shadow-[0_0_50px_rgba(14,165,233,0.4)] overflow-hidden relative group cursor-pointer" 
+                onClick={() => setIsHome(false)}
+             >
+                 <img 
+                     src="https://images.unsplash.com/photo-1485827404703-89b55fcc595e?auto=format&fit=crop&w=800&q=80" 
+                     alt="Dr. Constance Petersen" 
+                     className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
+                 />
+                 <div className="absolute inset-0 bg-med-blue/10 group-hover:bg-med-blue/0 transition-colors"></div>
+             </div>
+  
+             <div className="space-y-4 max-w-lg">
+                 <h1 className="text-4xl md:text-5xl font-display tracking-widest text-white">Dr. Constance Petersen</h1>
+                 <p className="text-xl md:text-2xl text-med-blue font-light">
+                     {t.whatCanIDo}
+                 </p>
+             </div>
+  
+             <button 
+                 onClick={() => setIsHome(false)}
+                 className="group relative px-8 py-3 bg-transparent border border-med-blue text-med-blue font-display tracking-wider hover:bg-med-blue hover:text-white transition-all duration-300 rounded overflow-hidden"
+             >
+                 <span className="relative z-10">{t.start}</span>
+                 <div className="absolute inset-0 bg-med-blue/20 transform scale-x-0 group-hover:scale-x-100 transition-transform origin-left duration-300"></div>
+             </button>
+  
+             {/* Language Switcher for Home */}
+             <div className="flex gap-4 mt-8">
+                  <button onClick={() => setLanguage('en')} className={`text-sm font-mono px-3 py-1 rounded transition-colors ${language === 'en' ? 'bg-med-blue text-white' : 'text-slate-500 hover:text-slate-300'}`}>EN</button>
+                  <button onClick={() => setLanguage('zh')} className={`text-sm font-mono px-3 py-1 rounded transition-colors ${language === 'zh' ? 'bg-med-blue text-white' : 'text-slate-500 hover:text-slate-300'}`}>中文</button>
+             </div>
+         </div>
+  
+         <div className="absolute bottom-6 text-slate-600 text-[10px] font-mono px-6 text-center">
+             {t.disclaimer}
+         </div>
+      </div>
+    );
+  }
+
+  // --------------------------------------------------------------------------
+  // CHAT INTERFACE RENDER
+  // --------------------------------------------------------------------------
   return (
     <div className="flex flex-col md:flex-row h-screen bg-med-dark overflow-hidden font-sans">
       <DataInputModal 
         type={activeModal} 
         onClose={() => setActiveModal(null)} 
         onSubmit={handleDataSubmit}
+        language={language}
       />
 
       {/* Left Panel: Robot Avatar */}
       <div className="w-full md:w-5/12 lg:w-1/3 h-[35vh] md:h-full border-b md:border-b-0 md:border-r border-slate-800 bg-slate-900 relative">
         <RobotAvatar isProcessing={isLoading} isSpeaking={!!audioPlayingId} />
         
+        {/* Back to Home Button (top left absolute) */}
+        <button 
+            onClick={() => setIsHome(true)}
+            className="absolute top-4 left-4 z-30 text-slate-500 hover:text-med-blue transition-colors"
+            title="Back to Home"
+        >
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
+        </button>
+
         {/* Disclaimer Overlay at bottom of avatar panel */}
         <div className="absolute bottom-4 left-0 w-full px-6 text-center z-20">
              <p className="text-[10px] text-slate-500 font-mono leading-tight">
-                All data entered and imported will be saved to google cloud and used for training google model nothing else.
+                {t.disclaimer}
              </p>
         </div>
       </div>
@@ -230,18 +372,34 @@ const App: React.FC = () => {
         <div className="h-16 border-b border-white/5 flex items-center justify-between px-6 backdrop-blur-sm shrink-0">
             <div className="flex items-center gap-2">
                 <div className="w-2 h-2 rounded-full bg-med-blue shadow-[0_0_10px_#0ea5e9]"></div>
-                <h1 className="text-med-blue font-display tracking-wider text-lg hidden sm:block">MEDICAL DIAGNOSTIC INTERFACE</h1>
+                <h1 className="text-med-blue font-display tracking-wider text-lg hidden sm:block">{t.title}</h1>
                 <h1 className="text-med-blue font-display tracking-wider text-lg sm:hidden">M.D.I.</h1>
             </div>
             
             <div className="flex items-center gap-3">
+                 {/* Language Toggle */}
+                 <div className="flex bg-slate-800 rounded-md overflow-hidden border border-slate-700">
+                    <button 
+                        onClick={() => setLanguage('en')}
+                        className={`px-2 py-1 text-xs font-mono transition-colors ${language === 'en' ? 'bg-med-blue text-white' : 'text-slate-400 hover:text-white'}`}
+                    >
+                        EN
+                    </button>
+                    <button 
+                        onClick={() => setLanguage('zh')}
+                        className={`px-2 py-1 text-xs font-mono transition-colors ${language === 'zh' ? 'bg-med-blue text-white' : 'text-slate-400 hover:text-white'}`}
+                    >
+                        中
+                    </button>
+                 </div>
+
                  <button 
                     onClick={handleGeneratePrescription}
                     disabled={isLoading}
                     className="flex items-center gap-2 px-3 py-1.5 rounded bg-med-blue/10 border border-med-blue/30 text-med-blue text-xs font-mono hover:bg-med-blue/20 transition-all"
                  >
                     <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
-                    PRINT PRESCRIPTION
+                    {t.printPrescription}
                  </button>
             </div>
         </div>
@@ -259,7 +417,7 @@ const App: React.FC = () => {
             {isLoading && (
                 <div className="flex justify-start animate-pulse">
                     <div className="bg-slate-800/50 p-3 rounded-lg text-med-blue text-xs font-mono">
-                        PROCESSING DATA...
+                        {t.processing}
                     </div>
                 </div>
             )}
@@ -273,19 +431,19 @@ const App: React.FC = () => {
             <div className="flex gap-2 mb-3 overflow-x-auto pb-2 scrollbar-hide">
                 <button onClick={() => fileInputRef.current?.click()} className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-800 border border-slate-700 text-slate-300 text-xs font-mono hover:border-med-blue hover:text-white transition-all whitespace-nowrap">
                     <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
-                    Picture
+                    {t.picture}
                 </button>
                 <button onClick={() => setActiveModal(DataType.BLOOD)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-800 border border-slate-700 text-slate-300 text-xs font-mono hover:border-red-500 hover:text-white transition-all whitespace-nowrap">
-                    🩸 Blood Test
+                    🩸 {t.bloodTest}
                 </button>
                 <button onClick={() => setActiveModal(DataType.URINE)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-800 border border-slate-700 text-slate-300 text-xs font-mono hover:border-yellow-500 hover:text-white transition-all whitespace-nowrap">
-                    💧 Urine Test
+                    💧 {t.urineTest}
                 </button>
                 <button onClick={() => setActiveModal(DataType.PULSE)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-800 border border-slate-700 text-slate-300 text-xs font-mono hover:border-pink-500 hover:text-white transition-all whitespace-nowrap">
-                    ❤️ Pulse
+                    ❤️ {t.pulse}
                 </button>
                 <button onClick={() => setActiveModal(DataType.STOOL)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-800 border border-slate-700 text-slate-300 text-xs font-mono hover:border-amber-700 hover:text-white transition-all whitespace-nowrap">
-                    💩 Stool Test
+                    💩 {t.stoolTest}
                 </button>
             </div>
 
@@ -320,7 +478,7 @@ const App: React.FC = () => {
                             handleSendMessage();
                         }
                     }}
-                    placeholder="Describe symptoms or ask questions..."
+                    placeholder={t.placeholder}
                     className="flex-1 bg-slate-800/50 text-white border border-slate-700 rounded-lg p-3 h-[50px] max-h-[120px] focus:outline-none focus:border-med-blue focus:ring-1 focus:ring-med-blue resize-none font-mono text-sm placeholder:text-slate-600"
                 />
 

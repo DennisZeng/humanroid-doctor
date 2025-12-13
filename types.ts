@@ -32,3 +32,5 @@ export enum DataType {
   PULSE = 'Pulse Rate',
   STOOL = 'Stool Test',
 }
+
+export type Language = 'en' | 'zh';

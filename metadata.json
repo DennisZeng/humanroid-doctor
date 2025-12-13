@@ -1,5 +1,5 @@
 {
-  "name": "Dr. Unit-734 | AI Medical Assistant",
+  "name": "Dr. Constance Petersen | AI Medical Assistant",
   "description": "Please create a humanroid robit doctor with the picture.\n1. chat box between painter and doctor.\n2. data import function: a)picture b) blood test c) Urine test d) Taking the pulse e) Stool test....   \n3. print medical report and suggestion prescription.\n4.  all data entered and imported will be saved to google cloud and used for training google model nothing else. ",
   "requestFramePermissions": [
     "microphone"

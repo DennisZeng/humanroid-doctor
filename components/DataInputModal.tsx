@@ -1,14 +1,33 @@
 import React, { useState } from 'react';
-import { DataType } from '../types';
+import { DataType, Language } from '../types';
 
 interface DataInputModalProps {
   type: DataType | null;
   onClose: () => void;
   onSubmit: (type: DataType, value: string) => void;
+  language: Language;
 }
 
-const DataInputModal: React.FC<DataInputModalProps> = ({ type, onClose, onSubmit }) => {
+const TEXTS = {
+  en: {
+    inputParams: "Input Parameters",
+    cancel: "CANCEL",
+    upload: "UPLOAD DATA",
+    import: "IMPORT",
+    data: "DATA"
+  },
+  zh: {
+    inputParams: "输入参数",
+    cancel: "取消",
+    upload: "上传数据",
+    import: "导入",
+    data: "数据"
+  }
+};
+
+const DataInputModal: React.FC<DataInputModalProps> = ({ type, onClose, onSubmit, language }) => {
   const [value, setValue] = useState('');
+  const t = TEXTS[language];
 
   if (!type) return null;
 
@@ -21,6 +40,15 @@ const DataInputModal: React.FC<DataInputModalProps> = ({ type, onClose, onSubmit
   };
 
   const getPlaceholder = () => {
+    if (language === 'zh') {
+        switch (type) {
+          case DataType.PULSE: return "例如：80 BPM，心律规则";
+          case DataType.BLOOD: return "例如：血红蛋白: 14.5 g/dL, 白细胞: 6.0";
+          case DataType.URINE: return "例如：颜色: 淡黄, pH: 6.0";
+          case DataType.STOOL: return "例如：性状: 正常, 颜色: 棕色";
+          default: return "输入数据...";
+        }
+    }
     switch (type) {
       case DataType.PULSE: return "e.g., 80 BPM, Regular rhythm";
       case DataType.BLOOD: return "e.g., Hemoglobin: 14.5 g/dL, WBC: 6.0";
@@ -28,6 +56,21 @@ const DataInputModal: React.FC<DataInputModalProps> = ({ type, onClose, onSubmit
       case DataType.STOOL: return "e.g., Consistency: Normal, Color: Brown";
       default: return "Enter data...";
     }
+  };
+
+  const getTitle = () => {
+    const typeLabel = language === 'zh' ? getTypeLabelZh(type) : type.toUpperCase();
+    return `${t.import} ${typeLabel} ${t.data}`;
+  };
+
+  const getTypeLabelZh = (type: DataType) => {
+      switch (type) {
+          case DataType.BLOOD: return "验血";
+          case DataType.URINE: return "验尿";
+          case DataType.PULSE: return "脉搏";
+          case DataType.STOOL: return "粪便检查";
+          default: return "";
+      }
   };
 
   const getIcon = () => {
@@ -48,7 +91,7 @@ const DataInputModal: React.FC<DataInputModalProps> = ({ type, onClose, onSubmit
         <div className="bg-slate-800/50 p-4 border-b border-white/5 flex justify-between items-center">
           <div className="flex items-center gap-3">
             <span className="text-2xl">{getIcon()}</span>
-            <h3 className="text-white font-display tracking-wider">IMPORT {type.toUpperCase()} DATA</h3>
+            <h3 className="text-white font-display tracking-wider">{getTitle()}</h3>
           </div>
           <button onClick={onClose} className="text-slate-400 hover:text-white transition-colors">
             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
@@ -58,7 +101,7 @@ const DataInputModal: React.FC<DataInputModalProps> = ({ type, onClose, onSubmit
         {/* Body */}
         <form onSubmit={handleSubmit} className="p-6">
           <div className="mb-4">
-            <label className="block text-med-blue text-xs font-mono mb-2 uppercase">Input Parameters</label>
+            <label className="block text-med-blue text-xs font-mono mb-2 uppercase">{t.inputParams}</label>
             <textarea 
               autoFocus
               value={value}
@@ -74,14 +117,14 @@ const DataInputModal: React.FC<DataInputModalProps> = ({ type, onClose, onSubmit
               onClick={onClose}
               className="px-4 py-2 rounded-lg text-slate-400 hover:text-white hover:bg-white/5 text-sm font-mono transition-colors"
             >
-              CANCEL
+              {t.cancel}
             </button>
             <button 
               type="submit"
               disabled={!value.trim()}
               className="px-6 py-2 rounded-lg bg-med-blue text-white hover:bg-sky-500 disabled:opacity-50 disabled:cursor-not-allowed font-display tracking-wide text-sm transition-all shadow-lg shadow-med-blue/20"
             >
-              UPLOAD DATA
+              {t.upload}
             </button>
           </div>
         </form>

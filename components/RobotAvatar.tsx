@@ -6,9 +6,8 @@ interface RobotAvatarProps {
 }
 
 const RobotAvatar: React.FC<RobotAvatarProps> = ({ isProcessing, isSpeaking }) => {
-  // Use a high-quality placeholder that matches the description of a humanoid robot
-  // In a real app, this would be the specific asset provided.
-  const avatarUrl = "https://images.unsplash.com/photo-1531746790731-6c087fecd65a?q=80&w=1000&auto=format&fit=crop"; 
+  // Restored to a reliable Humanoid Robot image from Unsplash
+  const avatarUrl = "https://images.unsplash.com/photo-1485827404703-89b55fcc595e?auto=format&fit=crop&w=800&q=80";
 
   const [glowIntensity, setGlowIntensity] = useState(0);
 
@@ -64,7 +63,7 @@ const RobotAvatar: React.FC<RobotAvatarProps> = ({ isProcessing, isSpeaking }) =
 
         {/* Status Text */}
         <div className="z-10 mt-8 text-center">
-            <h2 className="font-display text-3xl text-white tracking-widest uppercase">Dr. Unit-734</h2>
+            <h2 className="font-display text-2xl md:text-3xl text-white tracking-widest uppercase">Dr. Constance Petersen</h2>
             <div className="flex items-center justify-center gap-2 mt-2">
                 <div className={`w-2 h-2 rounded-full ${isProcessing ? 'bg-yellow-400 animate-ping' : 'bg-green-500'}`} />
                 <span className="text-med-blue font-mono text-sm">
