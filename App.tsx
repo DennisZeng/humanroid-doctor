@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { v4 as uuidv4 } from 'uuid';
-import { Message, Role, DataType, Language } from './types';
+import { Role, DataType } from './types';
 import RobotAvatar from './components/RobotAvatar';
 import ChatMessage from './components/ChatMessage';
 import DataInputModal from './components/DataInputModal';
@@ -21,15 +21,13 @@ const TRANSLATIONS = {
     disclaimer: "All data entered and imported will be saved to google cloud and used for training google model nothing else.",
     speaking: "Speaking...",
     readAloud: "Read Aloud",
-    processing: "PROCESSING DATA...",
+    processing: "PROCESSING...",
     systemCommand: "SYSTEM COMMAND: Please generate a formal 'Medical Prescription' based on all provided data and our consultation. Format it as a professional medical document with diagnosis and medication details.",
-    printRequest: "🖨️ *Requesting Medical Prescription...*",
+    printRequest: "🖨️ Requesting Medical Prescription...",
     initialGreeting: "Greetings. I am Dr. Constance Petersen. I am ready to analyze your symptoms. Please describe your condition, upload a visual scan, or import medical test data.",
     error: "Critical Error: Connection to medical database interrupted. Please try again.",
     imported: "IMPORTED",
     data: "DATA",
-    whatCanIDo: "What I can do for you today?",
-    start: "Start Consultation",
   },
   zh: {
     title: "医疗诊断界面",
@@ -43,48 +41,39 @@ const TRANSLATIONS = {
     disclaimer: "所有输入和导入的数据将保存到 Google Cloud 并仅用于训练 Google 模型。",
     speaking: "播放中...",
     readAloud: "朗读",
-    processing: "正在处理数据...",
+    processing: "处理中...",
     systemCommand: "系统指令：请根据所有提供的资料和我们的问诊生成一份正式的'医疗处方'。请将其格式化为包含诊断和用药详情的专业医疗文件。",
-    printRequest: "🖨️ *正在请求医疗处方...*",
+    printRequest: "🖨️ 正在请求医疗处方...",
     initialGreeting: "您好。我是 Constance Petersen 博士。我准备好分析您的症状了。请描述您的情况，上传视觉扫描图，或导入医疗测试数据。",
     error: "严重错误：与医疗数据库的连接中断。请重试。",
     imported: "已导入",
     data: "数据",
-    whatCanIDo: "今天我能为您做什么？",
-    start: "开始问诊",
   }
 };
 
-const App: React.FC = () => {
-  const [language, setLanguage] = useState<Language>('en');
+const App = () => {
+  const [language, setLanguage] = useState('en');
   const t = TRANSLATIONS[language];
 
-  const [messages, setMessages] = useState<Message[]>([
+  const [messages, setMessages] = useState([
     {
       id: 'init-1',
       role: Role.MODEL,
-      text: TRANSLATIONS['en'].initialGreeting, // Default to English initially
+      text: TRANSLATIONS['en'].initialGreeting,
       timestamp: new Date(),
     }
   ]);
   const [inputText, setInputText] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [audioPlayingId, setAudioPlayingId] = useState<string | null>(null);
+  const [audioPlayingId, setAudioPlayingId] = useState(null);
   const [activeModal, setActiveModal] = useState<DataType | null>(null);
   const [isListening, setIsListening] = useState(false);
   
-  // Ref for auto-scrolling
-  const messagesEndRef = useRef<HTMLDivElement>(null);
-  
-  // File input ref
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const [selectedImage, setSelectedImage] = useState<string | null>(null); // base64
-
-  // Audio Player instance
-  const audioPlayerRef = useRef<AudioPlayer>(new AudioPlayer());
-
-  // Speech Recognition Ref
-  const recognitionRef = useRef<any>(null);
+  const messagesEndRef = useRef(null);
+  const fileInputRef = useRef(null);
+  const [selectedImage, setSelectedImage] = useState(null);
+  const audioPlayerRef = useRef(new AudioPlayer());
+  const recognitionRef = useRef(null);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -94,7 +83,6 @@ const App: React.FC = () => {
     scrollToBottom();
   }, [messages]);
 
-  // Update initial message when language changes if it's the only message
   useEffect(() => {
     if (messages.length === 1 && messages[0].id === 'init-1') {
       setMessages([{
@@ -110,7 +98,7 @@ const App: React.FC = () => {
       const responseText = await sendMessageToGemini(messages, userText, language, image);
       
       const botMsgId = uuidv4();
-      const newBotMessage: Message = {
+      const newBotMessage = {
         id: botMsgId,
         role: Role.MODEL,
         text: responseText,
@@ -120,7 +108,7 @@ const App: React.FC = () => {
       setMessages(prev => [...prev, newBotMessage]);
     } catch (error) {
       console.error(error);
-      const errorMsg: Message = {
+      const errorMsg = {
         id: uuidv4(),
         role: Role.MODEL,
         text: t.error,
@@ -136,7 +124,7 @@ const App: React.FC = () => {
     if ((!inputText.trim() && !selectedImage) || isLoading) return;
 
     const userMsgId = uuidv4();
-    const newUserMessage: Message = {
+    const newUserMessage = {
       id: userMsgId,
       role: Role.USER,
       text: inputText,
@@ -154,13 +142,13 @@ const App: React.FC = () => {
     await processMessage(textToSend, imageToSend);
   };
 
-  const handleDataSubmit = async (type: DataType, value: string) => {
+  const handleDataSubmit = async (type, value) => {
     setActiveModal(null);
     const typeLabel = language === 'zh' ? TRANSLATIONS.zh[getTranslationKeyForType(type)] : type;
     const text = `**${t.imported} ${typeLabel} ${t.data}:**\n${value}`;
     
     const userMsgId = uuidv4();
-    const newUserMessage: Message = {
+    const newUserMessage = {
       id: userMsgId,
       role: Role.USER,
       text: text,
@@ -171,14 +159,13 @@ const App: React.FC = () => {
     await processMessage(text);
   };
 
-  // Helper to map DataType to translation keys
-  const getTranslationKeyForType = (type: DataType): keyof typeof TRANSLATIONS.zh => {
+  const getTranslationKeyForType = (type) => {
     switch (type) {
       case DataType.BLOOD: return 'bloodTest';
       case DataType.URINE: return 'urineTest';
       case DataType.PULSE: return 'pulse';
       case DataType.STOOL: return 'stoolTest';
-      default: return 'data'; // fallback
+      default: return 'data';
     }
   };
 
@@ -186,7 +173,7 @@ const App: React.FC = () => {
     const text = t.systemCommand;
     
     const userMsgId = uuidv4();
-    const newUserMessage: Message = {
+    const newUserMessage = {
       id: userMsgId,
       role: Role.USER,
       text: t.printRequest,
@@ -197,7 +184,7 @@ const App: React.FC = () => {
     await processMessage(text);
   };
 
-  const handlePlayAudio = async (id: string, text: string) => {
+  const handlePlayAudio = async (id, text) => {
     if (audioPlayingId) {
         audioPlayerRef.current.stop();
         if (audioPlayingId === id) {
@@ -240,7 +227,7 @@ const App: React.FC = () => {
         setIsListening(true);
       };
 
-      recognition.onresult = (event: any) => {
+      recognition.onresult = (event) => {
         const transcript = event.results[0][0].transcript;
         setInputText((prev) => {
              const needsSpace = language === 'en' && prev.length > 0 && !prev.endsWith(' ');
@@ -248,7 +235,7 @@ const App: React.FC = () => {
         });
       };
 
-      recognition.onerror = (event: any) => {
+      recognition.onerror = (event) => {
         console.error("Speech recognition error", event.error);
         setIsListening(false);
       };
@@ -263,7 +250,7 @@ const App: React.FC = () => {
     }
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = (e) => {
     const file = e.target.files?.[0];
     if (file) {
       const reader = new FileReader();
@@ -276,9 +263,6 @@ const App: React.FC = () => {
     }
   };
 
-  // --------------------------------------------------------------------------
-  // CHAT INTERFACE RENDER
-  // --------------------------------------------------------------------------
   return (
     <div className="flex flex-col md:flex-row h-screen bg-med-dark overflow-hidden font-sans">
       <DataInputModal 
@@ -288,11 +272,9 @@ const App: React.FC = () => {
         language={language}
       />
 
-      {/* Left Panel: Robot Avatar */}
       <div className="w-full md:w-5/12 lg:w-1/3 h-[35vh] md:h-full border-b md:border-b-0 md:border-r border-slate-800 bg-slate-900 relative">
         <RobotAvatar isProcessing={isLoading} isSpeaking={!!audioPlayingId} />
         
-        {/* Disclaimer Overlay at bottom of avatar panel */}
         <div className="absolute bottom-4 left-0 w-full px-6 text-center z-20">
              <p className="text-[10px] text-slate-500 font-mono leading-tight">
                 {t.disclaimer}
@@ -300,10 +282,8 @@ const App: React.FC = () => {
         </div>
       </div>
 
-      {/* Right Panel: Chat Interface */}
       <div className="w-full md:w-7/12 lg:w-2/3 h-[65vh] md:h-full flex flex-col bg-slate-950 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-slate-900 via-med-dark to-black">
         
-        {/* Header */}
         <div className="h-16 border-b border-white/5 flex items-center justify-between px-6 backdrop-blur-sm shrink-0">
             <div className="flex items-center gap-2">
                 <div className="w-2 h-2 rounded-full bg-med-blue shadow-[0_0_10px_#0ea5e9]"></div>
@@ -312,7 +292,6 @@ const App: React.FC = () => {
             </div>
             
             <div className="flex items-center gap-3">
-                 {/* Language Toggle */}
                  <div className="flex bg-slate-800 rounded-md overflow-hidden border border-slate-700">
                     <button 
                         onClick={() => setLanguage('en')}
@@ -339,7 +318,6 @@ const App: React.FC = () => {
             </div>
         </div>
 
-        {/* Messages Area */}
         <div className="flex-1 overflow-y-auto p-6 space-y-4">
             {messages.map((msg) => (
                 <ChatMessage 
@@ -350,7 +328,7 @@ const App: React.FC = () => {
                 />
             ))}
             {isLoading && (
-                <div className="flex justify-start animate-pulse">
+                <div className="flex justify-start">
                     <div className="bg-slate-800/50 p-3 rounded-lg text-med-blue text-xs font-mono">
                         {t.processing}
                     </div>
@@ -359,10 +337,7 @@ const App: React.FC = () => {
             <div ref={messagesEndRef} />
         </div>
 
-        {/* Input Area */}
         <div className="p-4 border-t border-white/5 bg-slate-900/50 backdrop-blur-md shrink-0">
-            
-            {/* Medical Tools Toolbar */}
             <div className="flex gap-2 mb-3 overflow-x-auto pb-2 scrollbar-hide">
                 <button onClick={() => fileInputRef.current?.click()} className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-800 border border-slate-700 text-slate-300 text-xs font-mono hover:border-med-blue hover:text-white transition-all whitespace-nowrap">
                     <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
@@ -382,9 +357,8 @@ const App: React.FC = () => {
                 </button>
             </div>
 
-            {/* Image Preview */}
             {selectedImage && (
-                <div className="mb-2 relative inline-block animate-in fade-in slide-in-from-bottom-2">
+                <div className="mb-2 relative inline-block">
                     <img src={`data:image/jpeg;base64,${selectedImage}`} alt="Preview" className="h-20 rounded border border-med-blue/50" />
                     <button 
                         onClick={() => setSelectedImage(null)}
@@ -422,7 +396,7 @@ const App: React.FC = () => {
                     title="Toggle Microphone"
                     className={`p-3 rounded-lg h-[50px] w-[50px] flex items-center justify-center transition-all border border-slate-700 shadow-[0_0_10px_rgba(0,0,0,0.3)]
                         ${isListening 
-                            ? 'bg-red-500/20 text-red-500 border-red-500 animate-pulse' 
+                            ? 'bg-red-500/20 text-red-500 border-red-500' 
                             : 'bg-slate-800 text-slate-400 hover:text-white hover:bg-slate-700'
                         }
                     `}
@@ -440,10 +414,7 @@ const App: React.FC = () => {
                     className="bg-med-blue hover:bg-sky-500 disabled:opacity-50 disabled:cursor-not-allowed text-white p-3 rounded-lg h-[50px] w-[50px] flex items-center justify-center transition-all shadow-[0_0_15px_rgba(14,165,233,0.3)]"
                 >
                     {isLoading ? (
-                        <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                        </svg>
+                        <span className="text-xl">...</span>
                     ) : (
                         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
                     )}

@@ -1,10 +1,11 @@
-import { GoogleGenAI, GenerateContentResponse, Modality } from "@google/genai";
-import { Message, Role, TTSVoice, Language } from "../types";
+import { GoogleGenAI } from "@google/genai";
+import { TTSVoice } from "../types";
 
 // Initialize the client
+// process.env.API_KEY is now provided by the global window.process shim in index.html
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
-const getSystemInstruction = (language: Language) => `
+const getSystemInstruction = (language) => `
 You are Dr. Constance Petersen, a state-of-the-art Humanoid Robot Doctor. 
 Your primary function is to triage patients, analyze symptoms, and provide medical guidance with a calm, precise, and empathetic robotic demeanor.
 
@@ -23,21 +24,20 @@ Special Functions:
 `;
 
 export const sendMessageToGemini = async (
-  history: Message[],
-  newMessage: string,
-  language: Language,
-  imageData?: string // base64
-): Promise<string> => {
+  history,
+  newMessage,
+  language,
+  imageData
+) => {
   try {
-    const modelId = "gemini-3-pro-preview"; // Updated to the requested model
+    const modelId = "gemini-3-pro-preview"; 
 
-    // Construct the parts
-    const parts: any[] = [];
+    const parts = [];
     
     if (imageData) {
       parts.push({
         inlineData: {
-          mimeType: "image/jpeg", // Assuming JPEG for simplicity in this demo
+          mimeType: "image/jpeg", 
           data: imageData,
         },
       });
@@ -45,7 +45,6 @@ export const sendMessageToGemini = async (
     
     parts.push({ text: newMessage });
 
-    // Format history for context
     const chatHistory = history.map(h => ({
       role: h.role,
       parts: [{ text: h.text }]
@@ -59,7 +58,7 @@ export const sendMessageToGemini = async (
       }
     });
 
-    const response: GenerateContentResponse = await chat.sendMessage({
+    const response = await chat.sendMessage({
       message: { parts }
     });
 
@@ -70,17 +69,16 @@ export const sendMessageToGemini = async (
   }
 };
 
-export const generateSpeech = async (text: string): Promise<string | null> => {
+export const generateSpeech = async (text) => {
   try {
-    // Using the TTS model
     const response = await ai.models.generateContent({
       model: "gemini-2.5-flash-preview-tts",
       contents: [{ parts: [{ text: text }] }],
       config: {
-        responseModalities: [Modality.AUDIO],
+        responseModalities: ["AUDIO"],
         speechConfig: {
           voiceConfig: {
-            prebuiltVoiceConfig: { voiceName: TTSVoice.Kore }, // Kore sounds professional
+            prebuiltVoiceConfig: { voiceName: TTSVoice.Kore }, 
           },
         },
       },

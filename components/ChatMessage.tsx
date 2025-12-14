@@ -1,6 +1,6 @@
 import React from 'react';
 import ReactMarkdown from 'react-markdown';
-import { Message, Role } from '../types';
+import { Role, Message } from '../types';
 
 interface ChatMessageProps {
   message: Message;
@@ -20,19 +20,16 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message, onPlayAudio, isPlayi
             : 'bg-med-blue/20 border-med-blue/50 text-white rounded-tr-none'
         }`}
       >
-        {/* Attachment Display */}
         {message.attachment && (
             <div className="mb-3 rounded-lg overflow-hidden border border-slate-600">
                 <img src={`data:image/jpeg;base64,${message.attachment}`} alt="Symptom" className="max-w-full h-auto max-h-48 object-cover" />
             </div>
         )}
 
-        {/* Text Content */}
         <div className="prose prose-invert prose-sm font-sans leading-relaxed">
           <ReactMarkdown>{message.text}</ReactMarkdown>
         </div>
 
-        {/* Footer Metadata */}
         <div className="flex items-center justify-between mt-3 pt-2 border-t border-white/10">
             <span className="text-[10px] uppercase tracking-wider opacity-50 font-mono">
                 {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
@@ -43,7 +40,7 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message, onPlayAudio, isPlayi
                     onClick={() => onPlayAudio(message.id, message.text)}
                     disabled={isPlaying}
                     className={`flex items-center gap-1 text-xs px-2 py-1 rounded transition-colors
-                        ${isPlaying ? 'text-med-blue animate-pulse' : 'text-slate-400 hover:text-med-blue hover:bg-white/5'}
+                        ${isPlaying ? 'text-med-blue' : 'text-slate-400 hover:text-med-blue hover:bg-white/5'}
                     `}
                 >
                     <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">

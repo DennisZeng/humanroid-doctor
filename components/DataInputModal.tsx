@@ -1,12 +1,5 @@
 import React, { useState } from 'react';
-import { DataType, Language } from '../types';
-
-interface DataInputModalProps {
-  type: DataType | null;
-  onClose: () => void;
-  onSubmit: (type: DataType, value: string) => void;
-  language: Language;
-}
+import { DataType } from '../types';
 
 const TEXTS = {
   en: {
@@ -25,13 +18,13 @@ const TEXTS = {
   }
 };
 
-const DataInputModal: React.FC<DataInputModalProps> = ({ type, onClose, onSubmit, language }) => {
+const DataInputModal = ({ type, onClose, onSubmit, language }) => {
   const [value, setValue] = useState('');
   const t = TEXTS[language];
 
   if (!type) return null;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = (e) => {
     e.preventDefault();
     if (value.trim()) {
       onSubmit(type, value);
@@ -63,7 +56,7 @@ const DataInputModal: React.FC<DataInputModalProps> = ({ type, onClose, onSubmit
     return `${t.import} ${typeLabel} ${t.data}`;
   };
 
-  const getTypeLabelZh = (type: DataType) => {
+  const getTypeLabelZh = (type) => {
       switch (type) {
           case DataType.BLOOD: return "验血";
           case DataType.URINE: return "验尿";
@@ -87,7 +80,6 @@ const DataInputModal: React.FC<DataInputModalProps> = ({ type, onClose, onSubmit
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
       <div className="bg-slate-900 border border-med-blue/30 rounded-2xl w-full max-w-md shadow-[0_0_30px_rgba(14,165,233,0.2)] overflow-hidden">
         
-        {/* Header */}
         <div className="bg-slate-800/50 p-4 border-b border-white/5 flex justify-between items-center">
           <div className="flex items-center gap-3">
             <span className="text-2xl">{getIcon()}</span>
@@ -98,7 +90,6 @@ const DataInputModal: React.FC<DataInputModalProps> = ({ type, onClose, onSubmit
           </button>
         </div>
 
-        {/* Body */}
         <form onSubmit={handleSubmit} className="p-6">
           <div className="mb-4">
             <label className="block text-med-blue text-xs font-mono mb-2 uppercase">{t.inputParams}</label>
