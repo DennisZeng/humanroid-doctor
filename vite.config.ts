@@ -12,7 +12,7 @@ export default defineConfig(({ mode }) => {
     base: './', 
     define: {
       // Polyfill process.env for the app usage
-      'process.env.API_KEY': JSON.stringify(env.API_KEY),
+      'process.env.API_KEY': JSON.stringify("AIzaSyCvvt_kQS6NEvOGhKfIexuETq6J84l2LQo"),
     },
     build: {
       outDir: 'dist',

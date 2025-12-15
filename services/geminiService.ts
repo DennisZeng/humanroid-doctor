@@ -1,10 +1,6 @@
 import { GoogleGenAI } from "@google/genai";
 import { TTSVoice } from "../types";
 
-// Initialize the client
-// process.env.API_KEY is now provided by the global window.process shim in index.html
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-
 const getSystemInstruction = (language) => `
 You are Dr. Constance Petersen, a state-of-the-art Humanoid Robot Doctor. 
 Your primary function is to triage patients, analyze symptoms, and provide medical guidance with a calm, precise, and empathetic robotic demeanor.
@@ -30,6 +26,8 @@ export const sendMessageToGemini = async (
   imageData
 ) => {
   try {
+    // Initialize the client on demand to ensure we use the latest API key
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
     const modelId = "gemini-3-pro-preview"; 
 
     const parts = [];
@@ -59,7 +57,7 @@ export const sendMessageToGemini = async (
     });
 
     const response = await chat.sendMessage({
-      message: { parts }
+      message: parts
     });
 
     return response.text || "Diagnostic systems encountered an error. Please repeat.";
@@ -71,6 +69,9 @@ export const sendMessageToGemini = async (
 
 export const generateSpeech = async (text) => {
   try {
+    // Initialize the client on demand
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+    
     const response = await ai.models.generateContent({
       model: "gemini-2.5-flash-preview-tts",
       contents: [{ parts: [{ text: text }] }],

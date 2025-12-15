@@ -4,6 +4,7 @@ import { Role, DataType } from './types';
 import RobotAvatar from './components/RobotAvatar';
 import ChatMessage from './components/ChatMessage';
 import DataInputModal from './components/DataInputModal';
+import HomePage from './components/HomePage';
 import { sendMessageToGemini, generateSpeech } from './services/geminiService';
 import { AudioPlayer } from './services/audioUtils';
 
@@ -28,6 +29,7 @@ const TRANSLATIONS = {
     error: "Critical Error: Connection to medical database interrupted. Please try again.",
     imported: "IMPORTED",
     data: "DATA",
+    endSession: "End Session",
   },
   zh: {
     title: "医疗诊断界面",
@@ -48,10 +50,12 @@ const TRANSLATIONS = {
     error: "严重错误：与医疗数据库的连接中断。请重试。",
     imported: "已导入",
     data: "数据",
+    endSession: "结束会诊",
   }
 };
 
 const App = () => {
+  const [hasStarted, setHasStarted] = useState(false);
   const [language, setLanguage] = useState('en');
   const t = TRANSLATIONS[language];
 
@@ -263,8 +267,26 @@ const App = () => {
     }
   };
 
+  const handleEndSession = () => {
+    if (audioPlayingId) {
+        audioPlayerRef.current.stop();
+        setAudioPlayingId(null);
+    }
+    if (isListening) {
+        if (recognitionRef.current) {
+            recognitionRef.current.stop();
+        }
+        setIsListening(false);
+    }
+    setHasStarted(false);
+  };
+
+  if (!hasStarted) {
+    return <HomePage onStart={() => setHasStarted(true)} />;
+  }
+
   return (
-    <div className="flex flex-col md:flex-row h-screen bg-med-dark overflow-hidden font-sans">
+    <div className="flex flex-col md:flex-row h-screen bg-med-dark overflow-hidden font-sans animate-[fadeIn_0.5s_ease-out]">
       <DataInputModal 
         type={activeModal} 
         onClose={() => setActiveModal(null)} 
@@ -314,6 +336,14 @@ const App = () => {
                  >
                     <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
                     {t.printPrescription}
+                 </button>
+
+                 <button 
+                    onClick={handleEndSession}
+                    className="flex items-center justify-center p-2 rounded-full text-slate-500 hover:bg-red-900/20 hover:text-red-400 transition-all"
+                    title={t.endSession}
+                 >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18.36 6.64a9 9 0 1 1-12.73 0"></path><line x1="12" y1="2" x2="12" y2="12"></line></svg>
                  </button>
             </div>
         </div>
