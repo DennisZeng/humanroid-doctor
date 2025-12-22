@@ -26,7 +26,7 @@ const RobotAvatar = ({ isProcessing, isSpeaking }) => {
         `}>
              <img 
                 src={avatarUrl} 
-                alt="Robot Doctor" 
+                alt="康斯坦丁-皮特森医生" 
                 className="w-full h-full object-cover opacity-90"
              />
              
@@ -44,11 +44,11 @@ const RobotAvatar = ({ isProcessing, isSpeaking }) => {
         </div>
 
         <div className="z-10 mt-8 text-center">
-            <h2 className="font-display text-2xl md:text-3xl text-white tracking-widest uppercase">Dr. Constance Petersen</h2>
+            <h2 className="font-display text-2xl md:text-3xl text-white tracking-widest uppercase">康斯坦丁-皮特森医生</h2>
             <div className="flex items-center justify-center gap-2 mt-2">
                 <div className={`w-2 h-2 rounded-full ${isProcessing ? 'bg-yellow-400' : 'bg-green-500'}`} />
                 <span className="text-med-blue font-mono text-sm">
-                    {isProcessing ? 'ANALYZING...' : isSpeaking ? 'SPEAKING...' : 'ONLINE'}
+                    {isProcessing ? '系统分析中...' : isSpeaking ? '正在播报...' : '系统在线'}
                 </span>
             </div>
         </div>

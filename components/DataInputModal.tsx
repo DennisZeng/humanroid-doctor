@@ -1,30 +1,30 @@
+
 import React, { useState } from 'react';
 import { DataType } from '../types';
 
 const TEXTS = {
-  en: {
-    inputParams: "Input Parameters",
-    cancel: "CANCEL",
-    upload: "UPLOAD DATA",
-    import: "IMPORT",
-    data: "DATA"
-  },
-  zh: {
-    inputParams: "输入参数",
-    cancel: "取消",
-    upload: "上传数据",
-    import: "导入",
-    data: "数据"
-  }
+  inputParams: "输入参数",
+  cancel: "取消",
+  upload: "上传数据",
+  import: "导入",
+  data: "数据"
 };
 
-const DataInputModal = ({ type, onClose, onSubmit, language }) => {
+// Define interface for props to fix type mismatch in App.tsx
+interface DataInputModalProps {
+  type: DataType | null;
+  onClose: () => void;
+  onSubmit: (type: DataType, value: string) => void;
+  language?: string;
+}
+
+const DataInputModal: React.FC<DataInputModalProps> = ({ type, onClose, onSubmit, language }) => {
   const [value, setValue] = useState('');
-  const t = TEXTS[language];
+  const t = TEXTS;
 
   if (!type) return null;
 
-  const handleSubmit = (e) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (value.trim()) {
       onSubmit(type, value);
@@ -33,30 +33,16 @@ const DataInputModal = ({ type, onClose, onSubmit, language }) => {
   };
 
   const getPlaceholder = () => {
-    if (language === 'zh') {
-        switch (type) {
-          case DataType.PULSE: return "例如：80 BPM，心律规则";
-          case DataType.BLOOD: return "例如：血红蛋白: 14.5 g/dL, 白细胞: 6.0";
-          case DataType.URINE: return "例如：颜色: 淡黄, pH: 6.0";
-          case DataType.STOOL: return "例如：性状: 正常, 颜色: 棕色";
-          default: return "输入数据...";
-        }
-    }
     switch (type) {
-      case DataType.PULSE: return "e.g., 80 BPM, Regular rhythm";
-      case DataType.BLOOD: return "e.g., Hemoglobin: 14.5 g/dL, WBC: 6.0";
-      case DataType.URINE: return "e.g., Color: Pale yellow, pH: 6.0";
-      case DataType.STOOL: return "e.g., Consistency: Normal, Color: Brown";
-      default: return "Enter data...";
+      case DataType.PULSE: return "例如：80 BPM，心律规则";
+      case DataType.BLOOD: return "例如：血红蛋白: 14.5 g/dL, 白细胞: 6.0";
+      case DataType.URINE: return "例如：颜色: 淡黄, pH: 6.0";
+      case DataType.STOOL: return "例如：性状: 正常, 颜色: 棕色";
+      default: return "输入数据...";
     }
   };
 
-  const getTitle = () => {
-    const typeLabel = language === 'zh' ? getTypeLabelZh(type) : type.toUpperCase();
-    return `${t.import} ${typeLabel} ${t.data}`;
-  };
-
-  const getTypeLabelZh = (type) => {
+  const getTypeLabel = (type: DataType) => {
       switch (type) {
           case DataType.BLOOD: return "验血";
           case DataType.URINE: return "验尿";
@@ -64,6 +50,11 @@ const DataInputModal = ({ type, onClose, onSubmit, language }) => {
           case DataType.STOOL: return "粪便检查";
           default: return "";
       }
+  };
+
+  const getTitle = () => {
+    const typeLabel = getTypeLabel(type);
+    return `${t.import} ${typeLabel} ${t.data}`;
   };
 
   const getIcon = () => {

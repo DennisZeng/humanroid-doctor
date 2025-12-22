@@ -8,62 +8,37 @@ import HomePage from './components/HomePage';
 import { sendMessageToGemini, generateSpeech } from './services/geminiService';
 import { AudioPlayer } from './services/audioUtils';
 
-// Translations
 const TRANSLATIONS = {
-  en: {
-    title: "MEDICAL DIAGNOSTIC INTERFACE",
-    printPrescription: "PRINT PRESCRIPTION",
-    picture: "Picture",
-    bloodTest: "Blood Test",
-    urineTest: "Urine Test",
-    pulse: "Pulse",
-    stoolTest: "Stool Test",
-    placeholder: "Describe symptoms or ask questions...",
-    disclaimer: "All data entered and imported will be saved to google cloud and used for training google model nothing else.",
-    speaking: "Speaking...",
-    readAloud: "Read Aloud",
-    processing: "PROCESSING...",
-    systemCommand: "SYSTEM COMMAND: Please generate a formal 'Medical Prescription' based on all provided data and our consultation. Format it as a professional medical document with diagnosis and medication details.",
-    printRequest: "🖨️ Requesting Medical Prescription...",
-    initialGreeting: "Greetings. I am Dr. Constance Petersen. I am ready to analyze your symptoms. Please describe your condition, upload a visual scan, or import medical test data.",
-    error: "Critical Error: Connection to medical database interrupted. Please try again.",
-    imported: "IMPORTED",
-    data: "DATA",
-    endSession: "End Session",
-  },
-  zh: {
-    title: "医疗诊断界面",
-    printPrescription: "打印处方",
-    picture: "图片",
-    bloodTest: "验血",
-    urineTest: "验尿",
-    pulse: "脉搏",
-    stoolTest: "粪便检查",
-    placeholder: "描述症状或提问...",
-    disclaimer: "所有输入和导入的数据将保存到 Google Cloud 并仅用于训练 Google 模型。",
-    speaking: "播放中...",
-    readAloud: "朗读",
-    processing: "处理中...",
-    systemCommand: "系统指令：请根据所有提供的资料和我们的问诊生成一份正式的'医疗处方'。请将其格式化为包含诊断和用药详情的专业医疗文件。",
-    printRequest: "🖨️ 正在请求医疗处方...",
-    initialGreeting: "您好。我是 Constance Petersen 博士。我准备好分析您的症状了。请描述您的情况，上传视觉扫描图，或导入医疗测试数据。",
-    error: "严重错误：与医疗数据库的连接中断。请重试。",
-    imported: "已导入",
-    data: "数据",
-    endSession: "结束会诊",
-  }
+  title: "医疗诊断界面",
+  printPrescription: "打印处方",
+  picture: "图片",
+  bloodTest: "验血",
+  urineTest: "验尿",
+  pulse: "脉搏",
+  stoolTest: "粪便检查",
+  placeholder: "请描述您的症状或提出疑问...",
+  disclaimer: "所有输入和导入的数据将保存到 Google Cloud 并仅用于训练 Google 模型，不作他用。",
+  speaking: "播放中...",
+  readAloud: "语音播报",
+  processing: "系统处理中...",
+  systemCommand: "系统指令：请根据所有提供的资料和我们的问诊生成一份正式的'医疗处方'。请将其格式化为包含诊断和用药详情的专业医疗文件。",
+  printRequest: "🖨️ 正在请求医疗处方...",
+  initialGreeting: "您好。我是康斯坦丁-皮特森医生。我已准备好分析您的症状。请描述您的情况，上传视觉扫描图，或导入医疗测试数据。",
+  error: "严重错误：与医疗数据库的连接中断。请重试。",
+  imported: "已导入",
+  data: "数据",
+  endSession: "结束会诊",
 };
 
 const App = () => {
   const [hasStarted, setHasStarted] = useState(false);
-  const [language, setLanguage] = useState('en');
-  const t = TRANSLATIONS[language];
+  const t = TRANSLATIONS;
 
   const [messages, setMessages] = useState([
     {
       id: 'init-1',
       role: Role.MODEL,
-      text: TRANSLATIONS['en'].initialGreeting,
+      text: t.initialGreeting,
       timestamp: new Date(),
     }
   ]);
@@ -87,19 +62,10 @@ const App = () => {
     scrollToBottom();
   }, [messages]);
 
-  useEffect(() => {
-    if (messages.length === 1 && messages[0].id === 'init-1') {
-      setMessages([{
-        ...messages[0],
-        text: t.initialGreeting
-      }]);
-    }
-  }, [language]);
-
   const processMessage = async (userText: string, image?: string) => {
     setIsLoading(true);
     try {
-      const responseText = await sendMessageToGemini(messages, userText, language, image);
+      const responseText = await sendMessageToGemini(messages, userText, 'zh', image);
       
       const botMsgId = uuidv4();
       const newBotMessage = {
@@ -148,7 +114,7 @@ const App = () => {
 
   const handleDataSubmit = async (type, value) => {
     setActiveModal(null);
-    const typeLabel = language === 'zh' ? TRANSLATIONS.zh[getTranslationKeyForType(type)] : type;
+    const typeLabel = getTranslationKeyForType(type);
     const text = `**${t.imported} ${typeLabel} ${t.data}:**\n${value}`;
     
     const userMsgId = uuidv4();
@@ -165,11 +131,11 @@ const App = () => {
 
   const getTranslationKeyForType = (type) => {
     switch (type) {
-      case DataType.BLOOD: return 'bloodTest';
-      case DataType.URINE: return 'urineTest';
-      case DataType.PULSE: return 'pulse';
-      case DataType.STOOL: return 'stoolTest';
-      default: return 'data';
+      case DataType.BLOOD: return t.bloodTest;
+      case DataType.URINE: return t.urineTest;
+      case DataType.PULSE: return t.pulse;
+      case DataType.STOOL: return t.stoolTest;
+      default: return t.data;
     }
   };
 
@@ -225,7 +191,7 @@ const App = () => {
       
       recognition.continuous = false;
       recognition.interimResults = false;
-      recognition.lang = language === 'zh' ? 'zh-CN' : 'en-US';
+      recognition.lang = 'zh-CN';
 
       recognition.onstart = () => {
         setIsListening(true);
@@ -233,10 +199,7 @@ const App = () => {
 
       recognition.onresult = (event) => {
         const transcript = event.results[0][0].transcript;
-        setInputText((prev) => {
-             const needsSpace = language === 'en' && prev.length > 0 && !prev.endsWith(' ');
-             return prev + (needsSpace ? ' ' : '') + transcript;
-        });
+        setInputText((prev) => prev + transcript);
       };
 
       recognition.onerror = (event) => {
@@ -250,7 +213,7 @@ const App = () => {
 
       recognition.start();
     } else {
-      alert("Speech recognition is not supported in this browser. Please use Chrome or Edge.");
+      alert("您的浏览器不支持语音识别。请使用 Chrome 或 Edge。");
     }
   };
 
@@ -291,7 +254,7 @@ const App = () => {
         type={activeModal} 
         onClose={() => setActiveModal(null)} 
         onSubmit={handleDataSubmit}
-        language={language}
+        language="zh"
       />
 
       <div className="w-full md:w-5/12 lg:w-1/3 h-[35vh] md:h-full border-b md:border-b-0 md:border-r border-slate-800 bg-slate-900 relative">
@@ -310,25 +273,10 @@ const App = () => {
             <div className="flex items-center gap-2">
                 <div className="w-2 h-2 rounded-full bg-med-blue shadow-[0_0_10px_#0ea5e9]"></div>
                 <h1 className="text-med-blue font-display tracking-wider text-lg hidden sm:block">{t.title}</h1>
-                <h1 className="text-med-blue font-display tracking-wider text-lg sm:hidden">M.D.I.</h1>
+                <h1 className="text-med-blue font-display tracking-wider text-lg sm:hidden">系统终端</h1>
             </div>
             
             <div className="flex items-center gap-3">
-                 <div className="flex bg-slate-800 rounded-md overflow-hidden border border-slate-700">
-                    <button 
-                        onClick={() => setLanguage('en')}
-                        className={`px-2 py-1 text-xs font-mono transition-colors ${language === 'en' ? 'bg-med-blue text-white' : 'text-slate-400 hover:text-white'}`}
-                    >
-                        EN
-                    </button>
-                    <button 
-                        onClick={() => setLanguage('zh')}
-                        className={`px-2 py-1 text-xs font-mono transition-colors ${language === 'zh' ? 'bg-med-blue text-white' : 'text-slate-400 hover:text-white'}`}
-                    >
-                        中
-                    </button>
-                 </div>
-
                  <button 
                     onClick={handleGeneratePrescription}
                     disabled={isLoading}
@@ -423,7 +371,7 @@ const App = () => {
 
                 <button 
                     onClick={toggleListening}
-                    title="Toggle Microphone"
+                    title="切换语音输入"
                     className={`p-3 rounded-lg h-[50px] w-[50px] flex items-center justify-center transition-all border border-slate-700 shadow-[0_0_10px_rgba(0,0,0,0.3)]
                         ${isListening 
                             ? 'bg-red-500/20 text-red-500 border-red-500' 
