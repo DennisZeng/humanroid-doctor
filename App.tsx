@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { v4 as uuidv4 } from 'uuid';
-import { Role, DataType } from './types';
+import { Role, DataType, PatientInfo } from './types';
 import RobotAvatar from './components/RobotAvatar';
 import ChatMessage from './components/ChatMessage';
 import DataInputModal from './components/DataInputModal';
@@ -32,6 +32,7 @@ const TRANSLATIONS = {
 
 const App = () => {
   const [hasStarted, setHasStarted] = useState(false);
+  const [patientInfo, setPatientInfo] = useState<PatientInfo | null>(null);
   const t = TRANSLATIONS;
 
   const [messages, setMessages] = useState([
@@ -44,15 +45,15 @@ const App = () => {
   ]);
   const [inputText, setInputText] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [audioPlayingId, setAudioPlayingId] = useState(null);
+  const [audioPlayingId, setAudioPlayingId] = useState<string | null>(null);
   const [activeModal, setActiveModal] = useState<DataType | null>(null);
   const [isListening, setIsListening] = useState(false);
   
-  const messagesEndRef = useRef(null);
-  const fileInputRef = useRef(null);
-  const [selectedImage, setSelectedImage] = useState(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const audioPlayerRef = useRef(new AudioPlayer());
-  const recognitionRef = useRef(null);
+  const recognitionRef = useRef<any>(null);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -62,10 +63,27 @@ const App = () => {
     scrollToBottom();
   }, [messages]);
 
+  // 当会诊开始时，发送一个隐藏的上下文消息或在第一次对话中包含它
+  const handleStart = (info: PatientInfo) => {
+    setPatientInfo(info);
+    setHasStarted(true);
+    
+    // 自定义欢迎语
+    const welcomeText = `您好，${info.name}${info.gender === '男' ? '先生' : info.gender === '女' ? '女士' : ''}。我是康斯坦丁-皮特森医生。我已经收到了您的基本档案（${info.age}岁，联系电话：${info.phone}）。请描述您目前的身体状况，或提供相关检查报告。`;
+    
+    setMessages([{
+      id: 'init-1',
+      role: Role.MODEL,
+      text: welcomeText,
+      timestamp: new Date(),
+    }]);
+  };
+
   const processMessage = async (userText: string, image?: string) => {
     setIsLoading(true);
     try {
-      const responseText = await sendMessageToGemini(messages, userText, 'zh', image);
+      // 传递 patientInfo 给服务层
+      const responseText = await sendMessageToGemini(messages, userText, 'zh', image, patientInfo);
       
       const botMsgId = uuidv4();
       const newBotMessage = {
@@ -112,7 +130,7 @@ const App = () => {
     await processMessage(textToSend, imageToSend);
   };
 
-  const handleDataSubmit = async (type, value) => {
+  const handleDataSubmit = async (type: DataType, value: string) => {
     setActiveModal(null);
     const typeLabel = getTranslationKeyForType(type);
     const text = `**${t.imported} ${typeLabel} ${t.data}:**\n${value}`;
@@ -129,7 +147,7 @@ const App = () => {
     await processMessage(text);
   };
 
-  const getTranslationKeyForType = (type) => {
+  const getTranslationKeyForType = (type: DataType) => {
     switch (type) {
       case DataType.BLOOD: return t.bloodTest;
       case DataType.URINE: return t.urineTest;
@@ -154,7 +172,7 @@ const App = () => {
     await processMessage(text);
   };
 
-  const handlePlayAudio = async (id, text) => {
+  const handlePlayAudio = async (id: string, text: string) => {
     if (audioPlayingId) {
         audioPlayerRef.current.stop();
         if (audioPlayingId === id) {
@@ -197,12 +215,12 @@ const App = () => {
         setIsListening(true);
       };
 
-      recognition.onresult = (event) => {
+      recognition.onresult = (event: any) => {
         const transcript = event.results[0][0].transcript;
         setInputText((prev) => prev + transcript);
       };
 
-      recognition.onerror = (event) => {
+      recognition.onerror = (event: any) => {
         console.error("Speech recognition error", event.error);
         setIsListening(false);
       };
@@ -217,7 +235,7 @@ const App = () => {
     }
   };
 
-  const handleFileChange = (e) => {
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
       const reader = new FileReader();
@@ -242,10 +260,11 @@ const App = () => {
         setIsListening(false);
     }
     setHasStarted(false);
+    setPatientInfo(null);
   };
 
   if (!hasStarted) {
-    return <HomePage onStart={() => setHasStarted(true)} />;
+    return <HomePage onStart={handleStart} />;
   }
 
   return (
@@ -254,12 +273,21 @@ const App = () => {
         type={activeModal} 
         onClose={() => setActiveModal(null)} 
         onSubmit={handleDataSubmit}
-        language="zh"
       />
 
       <div className="w-full md:w-5/12 lg:w-1/3 h-[35vh] md:h-full border-b md:border-b-0 md:border-r border-slate-800 bg-slate-900 relative">
         <RobotAvatar isProcessing={isLoading} isSpeaking={!!audioPlayingId} />
         
+        {/* 显示当前患者姓名 */}
+        <div className="absolute top-4 left-0 w-full px-6 flex justify-between items-center z-20 pointer-events-none opacity-40">
+             <div className="bg-med-blue/20 px-3 py-1 rounded-full border border-med-blue/30 text-[10px] text-med-blue font-mono uppercase tracking-widest">
+                当前患者: {patientInfo?.name}
+             </div>
+             <div className="bg-med-blue/20 px-3 py-1 rounded-full border border-med-blue/30 text-[10px] text-med-blue font-mono uppercase tracking-widest">
+                ID: {patientInfo?.phone.slice(-4)}
+             </div>
+        </div>
+
         <div className="absolute bottom-4 left-0 w-full px-6 text-center z-20">
              <p className="text-[10px] text-slate-500 font-mono leading-tight">
                 {t.disclaimer}
@@ -307,7 +335,7 @@ const App = () => {
             ))}
             {isLoading && (
                 <div className="flex justify-start">
-                    <div className="bg-slate-800/50 p-3 rounded-lg text-med-blue text-xs font-mono">
+                    <div className="bg-slate-800/50 p-3 rounded-lg text-med-blue text-xs font-mono animate-pulse">
                         {t.processing}
                     </div>
                 </div>
@@ -336,7 +364,7 @@ const App = () => {
             </div>
 
             {selectedImage && (
-                <div className="mb-2 relative inline-block">
+                <div className="mb-2 relative inline-block animate-in fade-in zoom-in duration-300">
                     <img src={`data:image/jpeg;base64,${selectedImage}`} alt="Preview" className="h-20 rounded border border-med-blue/50" />
                     <button 
                         onClick={() => setSelectedImage(null)}
@@ -374,7 +402,7 @@ const App = () => {
                     title="切换语音输入"
                     className={`p-3 rounded-lg h-[50px] w-[50px] flex items-center justify-center transition-all border border-slate-700 shadow-[0_0_10px_rgba(0,0,0,0.3)]
                         ${isListening 
-                            ? 'bg-red-500/20 text-red-500 border-red-500' 
+                            ? 'bg-red-500/20 text-red-500 border-red-500 animate-pulse' 
                             : 'bg-slate-800 text-slate-400 hover:text-white hover:bg-slate-700'
                         }
                     `}
@@ -392,7 +420,7 @@ const App = () => {
                     className="bg-med-blue hover:bg-sky-500 disabled:opacity-50 disabled:cursor-not-allowed text-white p-3 rounded-lg h-[50px] w-[50px] flex items-center justify-center transition-all shadow-[0_0_15px_rgba(14,165,233,0.3)]"
                 >
                     {isLoading ? (
-                        <span className="text-xl">...</span>
+                        <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
                     ) : (
                         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
                     )}

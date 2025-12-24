@@ -3,6 +3,13 @@ export enum Role {
   MODEL = 'model',
 }
 
+export interface PatientInfo {
+  name: string;
+  age: string;
+  gender: string;
+  phone: string;
+}
+
 export interface Message {
   id: string;
   role: Role;
